@@ -1,0 +1,121 @@
+---
+title: "Afraid to Walk at Night"
+author: "Cristina Zaldumbide"
+date: "2/28/2019"
+output: pdf_document
+---
+
+Are you afraid to walk at night? This question was polled to 2876 students who lived within 2 miles of campus. The following information was recorded:
+
+*Afraid to walk / not afraid to walk
+*Sex(0=females, 1=males)
+*Distance to walk home(miles)
+
+# Download Data
+```{r}
+afraid2walk<-read.csv("Afraid2walkatnight.csv", header = TRUE)
+attach(afraid2walk)
+```
+
+# Overview of data
+```{r}
+source("summary.info.R")
+summary.info(afraid2walk)
+xtabs(afraid~sex)
+xtabs(not.afraid~sex)
+afraid2walk$sex <- as.factor(afraid2walk$sex)
+```
+
+# Is distance significant in evaluating whether student is afraid to walk at night?
+```{r}
+logistic_model<- glm(cbind(afraid, not.afraid)~ distance, data= afraid2walk, family= binomial(link="logit"))
+summary(logistic_model)
+```
+
+Distance is a statistically significant factor at p-value ~ 0 affecting whether a student is afraid to walk home at night or not. Coefficient shows there is an increase in the probability of being afraid to walk at night with increasing distance. Specifically, for every unit increase in distance, the log odds of a student being afraid at night increases by 2.39 percent.
+
+
+#The change in odds of a student being afraid to walk home at night for 1 mile increase in distance is 10.94
+```{r}
+exp(coef(logistic_model)[2])
+
+#OR
+
+logit.13<-predict(logistic_model, data= afraid2walk, data.frame(distance=13))
+
+logit.14<-predict(logistic_model, data= afraid2walk, data.frame(distance=14))
+
+exp(logit.14)/exp(logit.13)
+```
+
+
+#Example of probabilities that a student will walk x miles home. 
+```{r}
+miles=seq(from =0, to =5, by= 0.1)
+probs<-predict(logistic_model, data= afraid2walk, data.frame(distance=miles), type="response")
+cbind(miles, probs)
+```
+# Plot model to observe fitting.
+
+```{r}
+library(faraway)
+obs.percent<-afraid/(afraid+not.afraid)
+obs.odds<-afraid/not.afraid
+obs.logit<-log(obs.odds)
+new.data<-data.frame(afraid2walk,obs.percent)
+simulated.distance<-seq(from=0, to =2, by=.1)
+plot (obs.percent~distance,col="steelblue",data=new.data,
+xlab="Distance (miles)", ylab="Percentage of students that are afraid",
+pch=19)
+lines(simulated.distance,ilogit(coef(logistic_model)[1] + coef(logistic_model)[2]*simulated.distance),
+col="black",lwd=3)
+```
+
+Logistic equation seems reasonable as it captures the  sigmoidal shape in the data. 
+
+# Is there difference between females and males?
+```{r}
+#adding sex factor to the model
+logistic_model.2<-glm(cbind(afraid, not.afraid)~ distance+sex, data= afraid2walk, family= binomial(link="logit"))
+summary(logistic_model.2)
+
+#calculating probability for each sex
+prob.female<-predict(logistic_model.2, data= afraid2walk, data.frame(distance=miles, sex="0"), type="response")
+prob.male<-predict(logistic_model.2, data= afraid2walk, data.frame(distance=miles, sex="1"), type="response")
+cbind(miles, prob.female, prob.male)
+```
+
+Sex is a statistically significant factor with p-value ~0  affecting whether the student is afraid to walk at night or not. Females tend to be more afraid. 
+
+#final model in terms of probability that a student is afraid to walk at night
+```{r}
+#adding interaction term to the model
+logistic_model.3<-glm(cbind(afraid, not.afraid)~ distance*sex, data= afraid2walk, family= binomial(link="logit"))
+summary(logistic_model.3)
+
+#comparing to preovious model
+anova(logistic_model.2, logistic_model.3, test="Chisq")
+```
+Logistic model with the interaction of sex and distance is significant in comparison to model with sex and distance as additive terms. Model with separate slopes will fit the data better. 
+
+#plotting final model
+```{r}
+#change sex for plotting purposes
+new.data<-within(new.data, new.sex<-ifelse(sex == "0", "2", "1"))
+logistic_model.3a<-glm(cbind(afraid,not.afraid)~distance * new.sex,data=new.data,family=binomial)
+plot (obs.percent~distance,data=new.data,col=as.factor(new.sex),
+xlab="Distance (miles)", ylab="Percentage of Students that are Afraid",
+main="Plot of Distance by Sex on Percentage of Afraid Students ",pch=19)
+lines(simulated.distance,ilogit(coef(logistic_model.3a)[1] + coef(logistic_model.3a)[2]*simulated.distance),
+col="black",lwd=3)
+lines(simulated.distance,ilogit((coef(logistic_model.3a)[1]+ coef(logistic_model.3a)[3])+
+(coef(logistic_model.3a)[2]+coef(logistic_model.3a)[4])*simulated.distance),
+col="red",lwd=3)
+legend(1.5,.3,c("Females","Males"),lty=1,lwd=2,col=c("red","black"))
+```
+
+```{r}
+detach(afraid2walk)
+```
+
+
