@@ -7,7 +7,7 @@ Are you afraid to walk at night? This question was polled to 2876 students who l
 
 *Distance to walk home(miles)
 
-Objectives:
+Objectives:  
 Determine if distance is significant  
 Determine if there is a difference between sex  
 Develop model that provides the probability of a student walking x miles home.   
